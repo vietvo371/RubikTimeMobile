@@ -1,25 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Pressable, TouchableWithoutFeedback, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Pressable, TouchableWithoutFeedback, TextInput, Alert, ActivityIndicator } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { getTimes, saveTime, getSettings, deleteTime, deleteAllTimes } from '../utils/database';
+import { getTimes, saveTime, getSettings, deleteTime, deleteAllTimes, getTimesCount, optimizeDatabase } from '../utils/database';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import TimeSettings from './TimeSettings';
 import { wp, hp } from '../utils/responsive';
 
-const TimeItem = ({ time, index, totalItems, type, isAverage, onDelete, disabled }) => {
+// Loading component
+const LoadingIndicator = ({ visible, text = "Loading..." }) => {
+    if (!visible) return null;
+    
+    return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={styles.loadingText}>{text}</Text>
+        </View>
+    );
+};
+
+// Performance info component
+const PerformanceInfo = ({ totalCount, isLoading, loadedCount }) => {
+    if (totalCount === 0) return null;
+    
+    return (
+        <View style={styles.performanceInfo}>
+            <Text style={styles.performanceText}>
+                {totalCount > 1000 ? `Large dataset (${totalCount} records)` : `${totalCount} records`}
+            </Text>
+            {loadedCount < totalCount && (
+                <Text style={styles.loadedText}>
+                    Loaded: {loadedCount}/{totalCount}
+                </Text>
+            )}
+            {isLoading && (
+                <ActivityIndicator size="small" color="#FFFFFF" style={styles.performanceLoader} />
+            )}
+        </View>
+    );
+};
+
+// Test data info component
+const TestDataInfo = ({ totalCount }) => {
+    if (totalCount === 0) return null;
+    
+    const isTestData = totalCount >= 500;
+    
+    return (
+        <View style={styles.testDataInfo}>
+            <Icon 
+                name={isTestData ? "database-check" : "database"} 
+                size={16} 
+                color={isTestData ? "#4CAF50" : "#666666"} 
+            />
+            <Text style={[
+                styles.testDataText,
+                isTestData && styles.testDataTextSuccess
+            ]}>
+                {isTestData ? `${totalCount} records (including test data)` : `${totalCount} records`}
+            </Text>
+        </View>
+    );
+};
+
+// Tách TimeItem thành component riêng để tối ưu re-render
+const TimeItem = React.memo(({ time, index, totalItems, type, isAverage, onDelete, disabled }) => {
     const [modalVisible, setModalVisible] = useState(false);
 
-    const getTimeItemStyle = () => {
+    const getTimeItemStyle = useMemo(() => {
         if (isAverage) {
             return styles.averageTimeItem;
         }
         const hue = (index / totalItems) * 360;
         switch (type) {
             case 'nearest':
-                // const ratio = index / (totalItems - 1);
-                // const r = Math.round(255 * (1 - ratio));
-                // const g = Math.round(255 * ratio);
-                // return { backgroundColor: `rgb(${r}, ${g}, 0)` };
                 return { backgroundColor: `hsl(${hue}, 80%, 50%)` };
             case 'sub20':
                 return { backgroundColor: `hsl(${hue}, 80%, 50%)` };
@@ -28,21 +81,21 @@ const TimeItem = ({ time, index, totalItems, type, isAverage, onDelete, disabled
             default:
                 return { backgroundColor: '#D9D9D9' };
         }
-    };
+    }, [index, totalItems, type, isAverage]);
 
-    const handleDelete = async () => {
+    const handleDelete = useCallback(async () => {
         if (onDelete) {
             await onDelete();
         }
         setModalVisible(false);
-    };
+    }, [onDelete]);
 
     return (
         <>
             <TouchableOpacity
                 style={[
                     styles.timeItem,
-                    getTimeItemStyle(),
+                    getTimeItemStyle,
                     isAverage && styles.averageTimeItem
                 ]}
                 onPress={() => !isAverage && !disabled && setModalVisible(true)}
@@ -89,20 +142,36 @@ const TimeItem = ({ time, index, totalItems, type, isAverage, onDelete, disabled
             </Modal>
         </>
     );
-};
+});
 
-const ScrollViewWithGradient = ({ children }) => (
-    <View style={styles.scrollViewContainer}>
-        <ScrollView 
-            style={styles.scrollList}
-            contentContainerStyle={styles.scrollListContent}
-        >
-            {children}
-        </ScrollView>
-    </View>
-);
+// Tối ưu ScrollView với pagination
+const ScrollViewWithGradient = React.memo(({ children, onEndReached, hasMoreData }) => {
+    const handleScroll = useCallback((event) => {
+        const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+        const paddingToBottom = 20;
+        if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+            if (hasMoreData && onEndReached) {
+                onEndReached();
+            }
+        }
+    }, [hasMoreData, onEndReached]);
 
-const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpdate }) => {
+    return (
+        <View style={styles.scrollViewContainer}>
+            <ScrollView 
+                style={styles.scrollList}
+                contentContainerStyle={styles.scrollListContent}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
+            >
+                {children}
+            </ScrollView>
+        </View>
+    );
+});
+
+const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpdate, navigation }) => {
     const [nearestTimes, setNearestTimes] = useState([]);
     const [averageTimes, setAverageTimes] = useState([]);
     const [sub20Times, setSub20Times] = useState([]);
@@ -112,23 +181,38 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
         numSubCount: '15',
         isSoundOn: true
     });
+    
+    // State cho total count và loaded count
+    const [totalCount, setTotalCount] = useState(0);
+    const [loadedCount, setLoadedCount] = useState(0);
+    
+    // Thêm state cho pagination
+    const [currentPage, setCurrentPage] = useState(0);
+    const [hasMoreData, setHasMoreData] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [allTimes, setAllTimes] = useState([]);
+    
+    // Cache cho các tính toán
+    const [cachedCalculations, setCachedCalculations] = useState({});
 
-    useEffect(() => {
-        loadSettings();
-        loadData();
-    }, [updateTrigger]);
-
-    const loadSettings = async () => {
+    // Tối ưu load settings với useCallback
+    const loadSettings = useCallback(async () => {
         try {
             const settings = await getSettings();
             if (settings) {
-                setLocalSettings({
+                const newSettings = {
                     numAvg: String(settings.numAvg || 5),
                     numSubCount: String(settings.numSubCount || 15),
                     isSoundOn: Boolean(settings.isSoundOn)
-                });
+                };
+                setLocalSettings(newSettings);
+                return settings;
             }
-            return settings;
+            return {
+                numAvg: 5,
+                numSubCount: 15,
+                isSoundOn: true
+            };
         } catch (error) {
             console.error('Error loading settings:', error);
             const defaultSettings = {
@@ -143,70 +227,152 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
             });
             return defaultSettings;
         }
-    };
+    }, []);
 
-    const loadData = async () => {
+    // Tối ưu load data với pagination
+    const loadData = useCallback(async (page = 0, append = false) => {
+        if (isLoading) return;
+        
         try {
+            setIsLoading(true);
             const settings = await loadSettings();
-            const times = await getTimes();
             
-            if (times.length === 0) {
+            // Load data theo batch để tránh lag
+            const batchSize = 50;
+            const offset = page * batchSize;
+            
+            // Sử dụng pagination từ database
+            const times = await getTimes(batchSize, offset);
+            const totalCountResult = await getTimesCount();
+            
+            if (totalCountResult === 0) {
                 setNearestTimes([]);
                 setAverageTimes([]);
                 setSub20Times([]);
                 setBestTime('00:00.000');
+                setAllTimes([]);
+                setHasMoreData(false);
+                setTotalCount(0);
+                setLoadedCount(0);
                 if (onBestTimeUpdate) {
                     onBestTimeUpdate('00:00.000');
                 }
                 return;
             }
 
-            // Cập nhật nearest times
-            setNearestTimes(times.map(t => t.time));
+            // Cập nhật allTimes
+            if (append) {
+                setAllTimes(prev => [...prev, ...times]);
+                setLoadedCount(prev => prev + times.length);
+            } else {
+                setAllTimes(times);
+                setLoadedCount(times.length);
+            }
 
-            // Cập nhật average times
-            const latestForAvg = times.slice(0, settings.numAvg).map(t => t.time);
+            // Chỉ tính toán cho dữ liệu hiện tại
+            const currentTimes = append ? 
+                [...allTimes, ...times] : 
+                times;
+
+            // Cập nhật nearest times (hiển thị tất cả đã load)
+            const displayTimes = currentTimes.map(t => t.time);
+            setNearestTimes(displayTimes);
+
+            // Cập nhật average times (chỉ tính cho settings.numAvg items đầu)
+            const latestForAvg = currentTimes.slice(0, settings.numAvg).map(t => t.time);
             setAverageTimes(latestForAvg);
 
-            // Cập nhật sub times
-            const subTimes = times
+            // Cập nhật sub times (tính cho tất cả đã load)
+            const subTimes = currentTimes
                 .filter(t => convertTimeToSeconds(t.time) < settings.numSubCount)
                 .sort((a, b) => convertTimeToSeconds(a.time) - convertTimeToSeconds(b.time))
                 .map(t => t.time);
             setSub20Times(subTimes);
 
-            // Cập nhật best time
-            const bestTimeValue = times.reduce((min, current) => {
-                const currentTime = convertTimeToSeconds(current.time);
-                return currentTime < min ? currentTime : min;
-            }, convertTimeToSeconds(times[0].time));
-            
-            const formattedBestTime = formatSeconds(bestTimeValue);
-            setBestTime(formattedBestTime);
-            if (onBestTimeUpdate) {
-                onBestTimeUpdate(formattedBestTime);
+            // Cập nhật best time (từ toàn bộ dữ liệu - chỉ load khi cần)
+            if (page === 0) {
+                const allTimesForBest = await getTimes(1000, 0); // Load 1000 records đầu để tìm best
+                const bestTimeValue = allTimesForBest.reduce((min, current) => {
+                    const currentTime = convertTimeToSeconds(current.time);
+                    return currentTime < min ? currentTime : min;
+                }, convertTimeToSeconds(allTimesForBest[0].time));
+                
+                const formattedBestTime = formatSeconds(bestTimeValue);
+                setBestTime(formattedBestTime);
+                if (onBestTimeUpdate) {
+                    onBestTimeUpdate(formattedBestTime);
+                }
             }
+
+            // Cập nhật pagination state
+            setHasMoreData(offset + batchSize < totalCountResult);
+            setCurrentPage(page);
+            setTotalCount(totalCountResult);
+            console.log('Updated totalCount:', totalCountResult, 'loadedCount:', times.length);
+
         } catch (error) {
             console.error('Error loading data:', error);
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [isLoading, allTimes, onBestTimeUpdate, loadSettings, convertTimeToSeconds, formatSeconds]);
 
-    // Các hàm utility giữ nguyên
-    const convertTimeToSeconds = (timeString) => {
+    // Load thêm data khi scroll
+    const handleLoadMore = useCallback(() => {
+        if (!isLoading && hasMoreData) {
+            loadData(currentPage + 1, true);
+        }
+    }, [isLoading, hasMoreData, currentPage, loadData]);
+
+    useEffect(() => {
+        loadData(0, false);
+        
+        // Tối ưu database định kỳ khi có nhiều dữ liệu
+        const optimizeIfNeeded = async () => {
+            try {
+                const totalCountResult = await getTimesCount();
+                if (totalCountResult > 1000) {
+                    await optimizeDatabase();
+                }
+            } catch (error) {
+                console.error('Error optimizing database:', error);
+            }
+        };
+        
+        optimizeIfNeeded();
+    }, [updateTrigger]);
+
+    // Debug useEffect để theo dõi state changes
+    useEffect(() => {
+        console.log('State changed - totalCount:', totalCount, 'loadedCount:', loadedCount);
+    }, [totalCount, loadedCount]);
+
+    // Thêm listener để refresh data khi quay lại từ Settings
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            // Refresh data khi quay lại từ Settings (có thể đã generate test data)
+            loadData(0, false);
+        });
+
+        return unsubscribe;
+    }, [navigation, loadData]);
+
+    // Các hàm utility được memoize
+    const convertTimeToSeconds = useCallback((timeString) => {
         const [minutesAndSeconds, milliseconds] = timeString.split('.');
         const [minutes, seconds] = minutesAndSeconds.split(':');
         return parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000;
-    };
+    }, []);
 
-    const formatSeconds = (seconds) => {
+    const formatSeconds = useCallback((seconds) => {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = Math.floor(seconds % 60);
         const milliseconds = Math.floor((seconds % 1) * 1000);
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-    };
+    }, []);
 
-    // Tính trung bình settings.numAvg lần gần nhất
-    const calculateAverage = () => {
+    // Tối ưu tính average với useMemo
+    const calculateAverage = useMemo(() => {
         if (averageTimes.length === 0) return '00:00,00';
         
         const sum = averageTimes
@@ -214,23 +380,23 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
             .reduce((a, b) => a + b, 0);
         
         return formatSeconds(sum / averageTimes.length);
-    };
+    }, [averageTimes, convertTimeToSeconds, formatSeconds]);
 
-    const handleDeleteTime = async (timeToDelete, timeList) => {
+    const handleDeleteTime = useCallback(async (timeToDelete, timeList) => {
         try {
             const times = await getTimes();
             const timeItem = times.find(t => t.time === timeToDelete);
             if (timeItem) {
                 await deleteTime(timeItem.id);
                 // Reload data sau khi xóa
-                loadData();
+                loadData(0, false);
             }
         } catch (error) {
             console.error('Error deleting time:', error);
         }
-    };
+    }, [loadData]);
 
-    const handleClearAll = async () => {
+    const handleClearAll = useCallback(async () => {
         try {
             Alert.alert(
                 'Confirm delete',
@@ -252,6 +418,11 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
                                 setAverageTimes([]);
                                 setSub20Times([]);
                                 setBestTime('00:00.000');
+                                setAllTimes([]);
+                                setCurrentPage(0);
+                                setHasMoreData(false);
+                                setTotalCount(0);
+                                setLoadedCount(0);
                                 
                                 Alert.alert('Success', 'All times have been deleted');
                             } catch (error) {
@@ -266,12 +437,19 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
             console.error('Error in handleClearAll:', error);
             Alert.alert('Error', 'An error occurred while deleting times');
         }
-    };
+    }, []);
 
-    // Thêm hàm để đếm tổng số time
-    const getTotalTimes = () => {
-        return nearestTimes.length.toString();
-    };
+    // Tối ưu getTotalTimes với useMemo - hiển thị phân trang
+    const getTotalTimes = useMemo(() => {
+        console.log('getTotalTimes - loadedCount:', loadedCount, 'totalCount:', totalCount);
+        // Fallback để tránh undefined
+        const safeLoadedCount = loadedCount || 0;
+        const safeTotalCount = totalCount || 0;
+        
+        if (safeTotalCount === 0) return '0';
+        if (safeLoadedCount >= safeTotalCount) return safeTotalCount.toString();
+        return `${safeLoadedCount}/${safeTotalCount}`;
+    }, [loadedCount, totalCount]);
 
     return (
         <View style={styles.container}>
@@ -280,12 +458,15 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
                     <View style={styles.infoBox}>
                         <Text style={styles.labelText}>Total</Text>
                         <TimeItem
-                            time={getTotalTimes()}
+                            time={getTotalTimes || '0'}
                             type="nearest"
                             isAverage={true}
                         />
                     </View>
-                    <ScrollViewWithGradient>
+                    <ScrollViewWithGradient 
+                        hasMoreData={hasMoreData}
+                        onEndReached={handleLoadMore}
+                    >
                         {nearestTimes.map((time, index) => (
                             <TimeItem
                                 key={`nearest-${index}`}
@@ -304,7 +485,7 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
                     <View style={styles.infoBox}>
                         <Text style={styles.labelText}>Avg {localSettings.numAvg} Near</Text>
                         <TimeItem
-                            time={calculateAverage()}
+                            time={calculateAverage}
                             type="nearest"
                             isAverage={true}
                         />
@@ -365,7 +546,9 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
                             isAverage={true}
                         />
                     </View>
-                    <ScrollViewWithGradient>
+                    <ScrollViewWithGradient 
+                        hasMoreData={false}
+                    >
                         {sub20Times.map((time, index) => (
                             <TimeItem
                                 key={`sub20-${index}`}
@@ -382,6 +565,7 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
 
                 
             </View>
+            <LoadingIndicator visible={isLoading} text="Loading times..." />
         </View>
     );
 };
@@ -608,6 +792,66 @@ const styles = StyleSheet.create({
     },
     oneHandButton: {
         backgroundColor: '#F59321',
+    },
+    loadingContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    loadingText: {
+        color: '#FFFFFF',
+        marginTop: 10,
+        fontSize: wp('4%'),
+    },
+    performanceInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: hp('1%'),
+        paddingVertical: hp('0.5%'),
+        paddingHorizontal: wp('2%'),
+        backgroundColor: '#D9D9D9',
+        borderRadius: wp('1.5%'),
+        width: '100%',
+    },
+    performanceText: {
+        fontSize: wp('3.5%'),
+        fontWeight: '600',
+        color: '#333',
+    },
+    loadedText: {
+        fontSize: wp('3%'),
+        color: '#666',
+        marginTop: hp('0.5%'),
+    },
+    performanceLoader: {
+        marginLeft: wp('1%'),
+    },
+    testDataInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: hp('1%'),
+        paddingVertical: hp('0.5%'),
+        paddingHorizontal: wp('2%'),
+        backgroundColor: '#D9D9D9',
+        borderRadius: wp('1.5%'),
+        width: '100%',
+    },
+    testDataText: {
+        fontSize: wp('3.5%'),
+        fontWeight: '600',
+        color: '#666666',
+        marginLeft: wp('1%'),
+    },
+    testDataTextSuccess: {
+        color: '#4CAF50',
     },
 });
 

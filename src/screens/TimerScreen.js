@@ -120,6 +120,7 @@ const TimerScreen = ({ navigation }) => {
                                                 }
                                             }}
                                             onBestTimeUpdate={handleBestTimeUpdate}
+                                            navigation={navigation}
                                         />
                                     </View>
                                 </View>

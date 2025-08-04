@@ -9,9 +9,10 @@ import {
     KeyboardAvoidingView, 
     TouchableWithoutFeedback, 
     Platform,
-    Keyboard 
+    Keyboard,
+    ActivityIndicator
 } from 'react-native';
-import { getSettings, saveSettings } from '../utils/database';
+import { getSettings, saveSettings, generateTestData } from '../utils/database';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../utils/responsive';
 
@@ -21,6 +22,7 @@ const SettingsScreen = ({ navigation }) => {
         numSubCount: '15',
         isSoundOn: true
     });
+    const [isGeneratingData, setIsGeneratingData] = useState(false);
 
     useEffect(() => {
         loadSettings();
@@ -78,6 +80,46 @@ const SettingsScreen = ({ navigation }) => {
         }
     };
 
+    const handleGenerateTestData = async () => {
+        Alert.alert(
+            'Generate Test Data',
+            'This will create 500 sample time records. This may take a few seconds. Continue?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Generate',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setIsGeneratingData(true);
+                            await generateTestData(500);
+                            Alert.alert(
+                                'Success', 
+                                '500 test records have been generated successfully!',
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => {
+                                            navigation.goBack();
+                                        }
+                                    }
+                                ]
+                            );
+                        } catch (error) {
+                            console.error('Error generating test data:', error);
+                            Alert.alert('Error', 'Could not generate test data');
+                        } finally {
+                            setIsGeneratingData(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <KeyboardAvoidingView 
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -125,6 +167,36 @@ const SettingsScreen = ({ navigation }) => {
                         >
                             <Text style={styles.saveButtonText}>Save Settings</Text>
                         </TouchableOpacity>
+
+                        <View style={styles.divider} />
+
+                        {/* <View style={styles.testDataSection}>
+                            <Text style={styles.sectionTitle}>Test Data</Text>
+                            <Text style={styles.sectionDescription}>
+                                Generate 500 sample time records to test app performance with large datasets.
+                            </Text>
+                            
+                            <TouchableOpacity 
+                                style={[
+                                    styles.generateButton,
+                                    isGeneratingData && styles.generateButtonDisabled
+                                ]}
+                                onPress={handleGenerateTestData}
+                                disabled={isGeneratingData}
+                            >
+                                {isGeneratingData ? (
+                                    <View style={styles.loadingContainer}>
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                        <Text style={styles.generateButtonText}>Generating...</Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.buttonContent}>
+                                        <Icon name="database-plus" size={20} color="#FFFFFF" />
+                                        <Text style={styles.generateButtonText}>Generate 500 Test Records</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View> */}
                     </View>
                 </View>
             </TouchableWithoutFeedback>
@@ -187,11 +259,58 @@ const styles = StyleSheet.create({
         padding: wp('4%'),
         borderRadius: wp('2%'),
         alignItems: 'center',
+        marginBottom: hp('3%')
     },
     saveButtonText: {
         color: '#FFFFFF',
         fontSize: wp('4%'),
         fontWeight: 'bold'
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E0E0E0',
+        marginVertical: hp('3%')
+    },
+    testDataSection: {
+        marginTop: hp('2%')
+    },
+    sectionTitle: {
+        fontSize: wp('4.5%'),
+        fontWeight: 'bold',
+        color: '#333333',
+        marginBottom: hp('1%')
+    },
+    sectionDescription: {
+        fontSize: wp('3.5%'),
+        color: '#666666',
+        marginBottom: hp('3%'),
+        lineHeight: wp('5%')
+    },
+    generateButton: {
+        backgroundColor: '#4CAF50',
+        padding: wp('4%'),
+        borderRadius: wp('2%'),
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center'
+    },
+    generateButtonDisabled: {
+        backgroundColor: '#A5D6A7',
+        opacity: 0.7
+    },
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    generateButtonText: {
+        color: '#FFFFFF',
+        fontSize: wp('4%'),
+        fontWeight: 'bold',
+        marginLeft: wp('2%')
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center'
     }
 });
 
