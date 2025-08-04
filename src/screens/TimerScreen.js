@@ -83,6 +83,28 @@ const TimerScreen = ({ navigation }) => {
         setBestTime(time);
     };
 
+    const handleAdPress = (adData) => {
+        // Có thể thêm navigation đến premium screen hoặc in-app purchase
+        console.log('Ad pressed:', adData);
+        Alert.alert(
+            'Premium Features',
+            'Upgrade to Premium Timer Pro to unlock advanced features!',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Upgrade',
+                    onPress: () => {
+                        // Navigate to premium screen hoặc open in-app purchase
+                        console.log('Navigate to premium screen');
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView 
@@ -101,7 +123,7 @@ const TimerScreen = ({ navigation }) => {
                         >
                             <View style={styles.fullScreenTouchable}>
                                 <View style={styles.container}>
-                                    <TimerBox bestTime={bestTime} />
+                                    <TimerBox bestTime={bestTime} onAdPress={handleAdPress} />
                                     <TimerDisplay
                                         onTimerStart={handleTimerStart}
                                         onTimerStop={handleTimerStop}
