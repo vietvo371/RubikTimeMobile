@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../../utils/responsive';
 
@@ -12,6 +12,15 @@ const LandscapeTimerBox = ({ bestTime = '00:00.000', onMenuPress, disabled }) =>
         { icon: 'hand-wave', label: 'One Hand', action: 'onehand', color: '#F59321' },
         { icon: 'hand-clap', label: 'Two Hand', action: 'twohand', color: '#9C27B0' },
     ];
+
+    const handleMenuPress = (action) => {
+        onMenuPress(action);
+        setShowMenu(false);
+    };
+
+    const closeMenu = () => {
+        setShowMenu(false);
+    };
 
     return (
         <View style={styles.view}>
@@ -26,22 +35,25 @@ const LandscapeTimerBox = ({ bestTime = '00:00.000', onMenuPress, disabled }) =>
                 <Icon name="menu" size={28} color="#000000" />
             </TouchableOpacity>
             {showMenu && !disabled && (
-                <View style={styles.menuContainer}>
-                    {menuItems.map((item, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={[styles.menuItem, { backgroundColor: item.color }]}
-                            onPress={() => {
-                                onMenuPress(item.action);
-                                setShowMenu(false);
-                            }}
-                            disabled={disabled}
-                        >
-                            <Icon name={item.icon} size={20} color="#FFFFFF" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>{item.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                <TouchableWithoutFeedback onPress={closeMenu}>
+                    <View style={styles.menuOverlay}>
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                            <View style={styles.menuContainer}>
+                                {menuItems.map((item, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[styles.menuItem, { backgroundColor: item.color }]}
+                                        onPress={() => handleMenuPress(item.action)}
+                                        disabled={disabled}
+                                    >
+                                        <Icon name={item.icon} size={20} color="#FFFFFF" style={styles.menuIcon} />
+                                        <Text style={styles.menuText}>{item.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
             )}
             <View style={styles.box}>
             </View>
@@ -142,7 +154,16 @@ const styles = StyleSheet.create({
         left: wp('4%'),
         top: hp('2%'),
         padding: wp('2%'),
-        zIndex: 2,
+        zIndex: 10,
+    },
+    menuOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        pointerEvents: 'box-none',
     },
     menuContainer: {
         position: 'absolute',
@@ -150,9 +171,18 @@ const styles = StyleSheet.create({
         left: wp('4%'),
         backgroundColor: '#FFFFFF',
         borderRadius: wp('2%'),
-        width: wp('35%'),
-        zIndex: 3,
+        width: wp('40%'),
+        zIndex: 1001,
         paddingVertical: hp('0.5%'),
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        maxHeight: hp('60%'),
     },
     menuItem: {
         flexDirection: 'row',

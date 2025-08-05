@@ -1,14 +1,15 @@
-import { getDatabase } from './database';
+import { getDatabase, initDatabase } from './database';
 
 export const TIME_KEY = 'RUBIK_TIMES';
 const SETTINGS_KEY = 'RUBIK_SETTINGS';
 
 export const saveTime = async (time) => {
     try {
+        await initDatabase();
         const db = await getDatabase();
         const result = await db.executeSql(
             'INSERT INTO times (time, created_at) VALUES (?, ?)',
-            [time, Date.now()]
+            [time, new Date().toISOString()]
         );
         return result[0].insertId;
     } catch (error) {
@@ -19,6 +20,7 @@ export const saveTime = async (time) => {
 
 export const getTimes = async () => {
     try {
+        await initDatabase();
         const db = await getDatabase();
         const [results] = await db.executeSql(
             'SELECT * FROM times ORDER BY created_at DESC'
@@ -42,6 +44,7 @@ export const getTimes = async () => {
 
 export const deleteTime = async (id) => {
     try {
+        await initDatabase();
         const db = await getDatabase();
         const [result] = await db.executeSql(
             'DELETE FROM times WHERE id = ?',
@@ -56,16 +59,18 @@ export const deleteTime = async (id) => {
 
 export const saveSettings = async (settings) => {
     try {
+        await initDatabase();
         const db = await getDatabase();
-        await db.executeSql('DELETE FROM settings');
         
-        const settingsArray = Object.entries(settings);
-        for (const [key, value] of settingsArray) {
-            await db.executeSql(
-                'INSERT INTO settings (key, value) VALUES (?, ?)',
-                [key, JSON.stringify(value)]
-            );
-        }
+        // Sử dụng cấu trúc database mới
+        await db.executeSql(
+            'INSERT INTO settings (numAvg, numSubCount, isSoundOn) VALUES (?, ?, ?)',
+            [
+                parseInt(settings.numAvg),
+                parseInt(settings.numSubCount),
+                settings.isSoundOn ? 1 : 0
+            ]
+        );
         return true;
     } catch (error) {
         console.error('Error saving settings:', error);
@@ -75,21 +80,27 @@ export const saveSettings = async (settings) => {
 
 export const getSettings = async () => {
     try {
+        await initDatabase();
         const db = await getDatabase();
-        const [results] = await db.executeSql('SELECT * FROM settings');
+        const [results] = await db.executeSql(
+            'SELECT numAvg, numSubCount, isSoundOn FROM settings ORDER BY id DESC LIMIT 1'
+        );
         
-        const settings = {
+        if (results.rows.length > 0) {
+            const item = results.rows.item(0);
+            return {
+                numAvg: parseInt(item.numAvg),
+                numSubCount: parseInt(item.numSubCount),
+                isSoundOn: Boolean(item.isSoundOn)
+            };
+        }
+        
+        // Trả về giá trị mặc định nếu không có dữ liệu
+        return {
             numAvg: 5,
             numSubCount: 15,
             isSoundOn: true
         };
-        
-        for (let i = 0; i < results.rows.length; i++) {
-            const item = results.rows.item(i);
-            settings[item.key] = JSON.parse(item.value);
-        }
-        
-        return settings;
     } catch (error) {
         console.error('Error getting settings:', error);
         return {
@@ -102,6 +113,7 @@ export const getSettings = async () => {
 
 export const clearAllTimes = async () => {
     try {
+        await initDatabase();
         const db = await getDatabase();
         await db.executeSql('DELETE FROM times');
         return true;

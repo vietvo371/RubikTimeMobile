@@ -25,13 +25,7 @@ const TimerBox = ({ bestTime = '00:00.000' }) => {
         <View style={styles.view}>
             <View style={styles.box}>
             </View>
-            <Animated.View style={[
-                styles.bestTryWrapper,
-                {
-                    opacity: fadeAnim,
-                    transform: [{ scale: scaleAnim }]
-                }
-            ]}>
+            <View style={styles.bestTryWrapper}>
                 <View style={styles.circleBackground} />
                 <View style={styles.bestTryContainer}>
                     <View style={styles.trophyContainer}>
@@ -45,7 +39,7 @@ const TimerBox = ({ bestTime = '00:00.000' }) => {
                         </View>
                     </View>
                 </View>
-            </Animated.View>
+            </View>
         </View>
     );
 };
@@ -63,18 +57,18 @@ const styles = StyleSheet.create({
     },
     bestTryWrapper: {
         position: 'absolute',
-        bottom: -45,
+        bottom: hp('-7%'),
         width: '100%',
         alignItems: 'center',
         zIndex: 1,
     },
     circleBackground: {
         position: 'absolute',
-        width: 200,
-        height: 100,
+        width: wp('50%'),
+        height: hp('12%'),
         backgroundColor: '#ed3126',
-        borderRadius: "60%",
-        top: -5,
+        borderRadius: wp('25%'),
+        top: hp('-1%'),
         zIndex: -1,
     },
     bestTryContainer: {
@@ -91,18 +85,17 @@ const styles = StyleSheet.create({
     },
     timeContainer: {
         position: 'absolute',
-        top: '30%',
+        top: '40%',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'transparent',
     },
     bestTryImage: {
         width: wp('45%'),
-        height: hp('12%'),
+        height: hp('11%'),
     },
     bestTryTime: {
-        marginTop: hp('0.5%'),
-        fontSize: wp('5.5%'),
+        fontSize: wp('4.5%'),
         fontWeight: 'bold',
         color: '#FFFFFF',
     },

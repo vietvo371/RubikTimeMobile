@@ -9,6 +9,11 @@ import { useTimer } from '../../contexts/TimerContext';
 import { LandscapeTimerDisplayProvider, useLandscapeTimerDisplay } from './LandscapeTimerDisplayContext';
 
 const formatTime = (ms) => {
+    // Đảm bảo ms không âm
+    if (ms < 0) {
+        ms = 0;
+    }
+    
     // Làm tròn đến 3 chữ số thập phân để tránh số lẻ
     ms = Math.round(ms);
     
@@ -20,7 +25,7 @@ const formatTime = (ms) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
 };
 
-const Timer = React.memo(({ onStart, onStop }) => {
+const Timer = React.memo(({ onStart, onStop, displayTime, setDisplayTime }) => {
     const { 
         isRunning,
         isReadyToStart,
@@ -29,7 +34,6 @@ const Timer = React.memo(({ onStart, onStop }) => {
         time,
         stopTime
     } = useLandscapeTimerDisplay();
-    const [displayTime, setDisplayTime] = useState('00:00.000');
     const timerRef = useRef(null);
     const startTimeRef = useRef(0);
     const frameRef = useRef();
@@ -60,12 +64,17 @@ const Timer = React.memo(({ onStart, onStop }) => {
             }
             
             // Tính toán thời gian chính xác
-            const elapsedTime = (stopTime || performance.now()) - startTimeRef.current;
+            const currentTime = stopTime || performance.now();
+            const elapsedTime = Math.max(0, currentTime - startTimeRef.current);
             const accurateTime = formatTime(elapsedTime);
             
             setDisplayTime(accurateTime);
             setTime(accurateTime);
-            onStop?.(accurateTime);
+            
+            // Gọi onStop callback để thông báo timer đã dừng
+            if (onStop) {
+                onStop(accurateTime);
+            }
         }
 
         return () => {
@@ -115,6 +124,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     const currentTimeRef = useRef(time);
     const pressStartTimeRef = useRef(null);
     const pressTimerRef = useRef(null);
+    const [displayTime, setDisplayTime] = useState('00:00.000');
 
     const [settings, setSettings] = useState({
         numAvg: 5,
@@ -131,10 +141,18 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
 
     const stopTimer = useCallback((touchTime) => {
         if (isRunning) {
-            setStopTime(touchTime || performance.now());
+            const currentTime = touchTime || performance.now();
+            setStopTime(currentTime);
             setIsRunning(false);
             setIsShowingResult(true);
             setIsTimerStarted(false);
+            
+            // Đảm bảo thời gian được lưu ngay lập tức
+            const elapsedTime = Math.max(0, currentTime - startTimeRef.current);
+            const accurateTime = formatTime(elapsedTime);
+            setTime(accurateTime);
+            
+            console.log('Timer stopped with time:', accurateTime);
         }
     }, [isRunning]);
 
@@ -150,13 +168,30 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     }, [updateTrigger]);
 
     useEffect(() => {
-        if (!isRunning && time !== '00:00.000') {
+        if (!isRunning && time !== '00:00.000' && time !== displayTime) {
             console.log('Timer stopped, saving time:', time);
             Promise.all([
                 saveTime(time)
             ]).then(() => {
                 loadData();
+            }).catch((error) => {
+                console.error('Error saving time:', error);
             });
+        }
+    }, [isRunning, time, displayTime]);
+
+    // Thêm useEffect để theo dõi thời gian khi timer dừng
+    useEffect(() => {
+        if (!isRunning && time !== '00:00.000') {
+            console.log('Timer stopped, saving time:', time);
+            saveTime(time)
+                .then(() => {
+                    console.log('Time saved successfully:', time);
+                    loadData();
+                })
+                .catch((error) => {
+                    console.error('Error saving time:', error);
+                });
         }
     }, [isRunning, time]);
 
@@ -237,9 +272,19 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     }, [settings, updateTrigger]);
 
     const convertTimeToMs = (timeString) => {
-        const [minutesAndSeconds, milliseconds] = timeString.split('.');
-        const [minutes, seconds] = minutesAndSeconds.split(':');
-        return parseInt(minutes) * 60000 + parseInt(seconds) * 1000 + parseInt(milliseconds);
+        try {
+            const [minutesAndSeconds, milliseconds] = timeString.split('.');
+            const [minutes, seconds] = minutesAndSeconds.split(':');
+            
+            const minutesNum = parseInt(minutes) || 0;
+            const secondsNum = parseInt(seconds) || 0;
+            const millisecondsNum = parseInt(milliseconds) || 0;
+            
+            return minutesNum * 60000 + secondsNum * 1000 + millisecondsNum;
+        } catch (error) {
+            console.error('Error converting time to ms:', error, timeString);
+            return 0;
+        }
     };
 
     const prepareTimer = () => {
@@ -253,8 +298,10 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
         pressTimerRef.current = null;
         
         setTime('00:00.000');
+        setDisplayTime('00:00.000');
         setIsRunning(false);
         setIsShowingResult(false);
+        setStopTime(0);
         
         if (global.gc) {
             global.gc();
@@ -264,6 +311,8 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     const startTimer = () => {
         if (!isRunning) {
             console.log('Starting timer...');
+            // Reset startTimeRef để đảm bảo tính toán chính xác
+            startTimeRef.current = performance.now();
             setIsRunning(true);
             setIsTimerStarted(true);
             console.log('Before onTimerStart');
@@ -273,24 +322,36 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     };
 
     const onLongPress = (side, event) => {
+        console.log('LongPress event:', side, event.nativeEvent.state, 'isRunning:', isRunning);
+        
         if (event.nativeEvent.state === State.ACTIVE) {
             if (side === 'left') {
                 setLeftPressed(true);
+                console.log('Left hand pressed');
             } else {
                 setRightPressed(true);
+                console.log('Right hand pressed');
             }
 
             if ((side === 'left' && rightPressed) || (side === 'right' && leftPressed)) {
+                console.log('Both hands detected, isRunning:', isRunning);
                 if (!isRunning) {
+                    // Bắt đầu timer
                     bothPressTimer.current = setTimeout(() => {
+                        console.log('Starting timer with both hands...');
                         setIsShowingResult(false);
                         prepareTimer();
                         setIsReadyToStart(true);
                     }, 300);
+                } else {
+                    // Dừng timer nếu đang chạy
+                    console.log('Stopping timer with both hands...');
+                    stopTimer(performance.now());
                 }
             }
         } else if (event.nativeEvent.state === State.END) {
             if (isReadyToStart) {
+                console.log('Starting timer after preparation...');
                 setLeftPressed(false);
                 setRightPressed(false);
                 startTimer();
@@ -520,6 +581,8 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                         <Timer
                             onStart={startTimer}
                             onStop={stopTimer}
+                            displayTime={displayTime}
+                            setDisplayTime={setDisplayTime}
                         />
                         <View style={styles.avgInfoBox}>
                             <Text style={styles.avgLabel}>Avg {settings.numAvg} Near</Text>
