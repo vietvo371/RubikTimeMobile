@@ -565,7 +565,7 @@ const TimerControls = ({ disabled, updateTrigger, onScreenChange, onBestTimeUpda
 
                 
             </View>
-            <LoadingIndicator visible={isLoading} text="Loading times..." />
+            {/* <LoadingIndicator visible={isLoading} text="Loading times..." /> */}
         </View>
     );
 };
