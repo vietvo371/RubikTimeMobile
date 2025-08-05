@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { wp, hp } from '../utils/responsive';
+import AdMobBanner from './AdMobBanner';
 
-const TimerBox = ({ bestTime = '00:00.000' }) => {
+const TimerBox = ({ bestTime = '00:00.000', onAdPress }) => {
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -21,9 +22,21 @@ const TimerBox = ({ bestTime = '00:00.000' }) => {
         ]).start();
     }, [bestTime]);
 
+    const handleAdLoaded = () => {
+        console.log('AdMob Banner loaded in TimerBox');
+    };
+
+    const handleAdFailedToLoad = (error) => {
+        console.log('AdMob Banner failed to load in TimerBox:', error);
+    };
+
     return (
         <View style={styles.view}>
             <View style={styles.box}>
+                <AdMobBanner 
+                    onAdLoaded={handleAdLoaded}
+                    onAdFailedToLoad={handleAdFailedToLoad}
+                />
             </View>
             <Animated.View style={[
                 styles.bestTryWrapper,
@@ -108,10 +121,11 @@ const styles = StyleSheet.create({
     },
     box: {
         height: hp('15%'),
-        backgroundColor: "#0C0C0C",
         borderRadius: wp('4%'),
         marginHorizontal: '3%',
         zIndex: 2,
+        overflow: 'hidden',
+        backgroundColor: '#0C0C0C', // Fallback background
     },
 });
 
