@@ -366,6 +366,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        paddingTop: hp('4%'), // Thêm padding phía trên để tránh đè navbar
     },
     fullScreenTouchable: {
         flex: 1,
@@ -376,12 +377,14 @@ const styles = StyleSheet.create({
     column: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        paddingTop: hp('2%'), // Thêm padding cho column
     },
     topBar: {
-        height: hp('16%'),
+        height: hp('12%'), // Giảm chiều cao của topBar
         position: 'relative',
-        paddingTop: 0,
-        paddingBottom: hp('4%'),
+        paddingTop: hp('1%'),
+        paddingBottom: hp('2%'),
+        zIndex: 10, // Đảm bảo topBar hiển thị trên cùng
     },
     content: {
         flex: 1,
