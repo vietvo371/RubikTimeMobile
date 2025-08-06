@@ -9,10 +9,7 @@ import {
     StatusBar,
     Alert,
     Dimensions,
-    PanResponder,
-    KeyboardAvoidingView,
-    Platform,
-    Keyboard
+    PanResponder
 } from "react-native";
 import LandscapeTimerDisplay from '../components/landscape/LandscapeTimerDisplay';
 import LandscapeTimerBox from '../components/landscape/LandscapeTimerBox';
@@ -117,7 +114,6 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     }));
 
     useEffect(() => {
-        // Hide status bar for landscape mode
         StatusBar.setHidden(true);
         return () => {
             StatusBar.setHidden(false);
@@ -268,75 +264,65 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.container}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-            >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={styles.container}>
-                        {showSettings ? (
-                            <SettingsScreen />
-                        ) : (
-                            <GestureHandlerRootView style={{ flex: 1 }}>
-                                <GestureDetector gesture={gesture}>
-                                    <TouchableWithoutFeedback 
-                                        onPress={handleScreenPress}
-                                        disabled={isScreenEnabled}
-                                    >
-                                        <View style={styles.fullScreenTouchable}>
-                                            {!isScreenEnabled && (
-                                                <View style={styles.touchZonesContainer}>
-                                                    <View style={[
-                                                        styles.touchZone, 
-                                                        styles.leftZone,
-                                                        leftTouched && styles.touchedZone
-                                                    ]} />
-                                                    <View style={[
-                                                        styles.touchZone, 
-                                                        styles.rightZone,
-                                                        rightTouched && styles.touchedZone
-                                                    ]} />
-                                                </View>
-                                            )}
-                                            
-                                            <View style={styles.mainContainer}>
-                                                <View style={styles.topBar}>
-                                                    <LandscapeTimerBox 
-                                                        bestTime={bestTime} 
-                                                        onMenuPress={handleMenuPress}
-                                                        disabled={!isScreenEnabled}
-                                                    />
-                                                </View>
-                                                
-                                                <View style={styles.content}>
-                                                    <LandscapeTimerDisplay
-                                                        onTimerStart={handleTimerStart}
-                                                        onTimerStop={handleTimerStop}
-                                                        onStopTimerReady={handleStopTimerReady}
-                                                        onBestTimeUpdate={handleBestTimeUpdate}
-                                                        updateTrigger={updateTrigger}
-                                                        onClearAll={handleSetClearAllFunc}
-                                                        isScreenEnabled={isScreenEnabled}
-                                                    />
-                                                </View>
-                                            </View>
+            {showSettings ? (
+                <SettingsScreen />
+            ) : (
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                    <GestureDetector gesture={gesture}>
+                        <TouchableWithoutFeedback 
+                            onPress={handleScreenPress}
+                            disabled={isScreenEnabled}
+                        >
+                            <View style={styles.fullScreenTouchable}>
+                                {!isScreenEnabled && (
+                                    <View style={styles.touchZonesContainer}>
+                                        <View style={[
+                                            styles.touchZone, 
+                                            styles.leftZone,
+                                            leftTouched && styles.touchedZone
+                                        ]} />
+                                        <View style={[
+                                            styles.touchZone, 
+                                            styles.rightZone,
+                                            rightTouched && styles.touchedZone
+                                        ]} />
+                                    </View>
+                                )}
+                                
+                                <View style={styles.column}>
+                                    <View style={styles.topBar}>
+                                        <LandscapeTimerBox 
+                                            bestTime={bestTime} 
+                                            onMenuPress={handleMenuPress}
+                                            disabled={!isScreenEnabled}
+                                        />
+                                    </View>
+                                    
+                                    <View style={styles.content}>
+                                        <LandscapeTimerDisplay
+                                            onTimerStart={handleTimerStart}
+                                            onTimerStop={handleTimerStop}
+                                            onStopTimerReady={handleStopTimerReady}
+                                            onBestTimeUpdate={handleBestTimeUpdate}
+                                            updateTrigger={updateTrigger}
+                                            onClearAll={handleSetClearAllFunc}
+                                            isScreenEnabled={isScreenEnabled}
+                                        />
+                                    </View>
+                                </View>
 
-                                            {!isScreenEnabled && (
-                                                <View 
-                                                    style={styles.overlay} 
-                                                    pointerEvents="none"
-                                                >
-                                                </View>
-                                            )}
-                                        </View>
-                                    </TouchableWithoutFeedback>
-                                </GestureDetector>
-                            </GestureHandlerRootView>
-                        )}
-                    </View>
-                </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+                                {!isScreenEnabled && (
+                                    <View 
+                                        style={styles.overlay} 
+                                        pointerEvents="none"
+                                    >
+                                    </View>
+                                )}
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </GestureDetector>
+                </GestureHandlerRootView>
+            )}
         </SafeAreaView>
     );
 });
@@ -387,11 +373,6 @@ const styles = StyleSheet.create({
         height: '100%',
         position: 'relative',
     },
-    mainContainer: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-        position: 'relative',
-    },
     column: {
         flex: 1,
         backgroundColor: '#FFFFFF',
@@ -399,10 +380,8 @@ const styles = StyleSheet.create({
     topBar: {
         height: hp('16%'),
         position: 'relative',
-        paddingTop: hp('2%'),
+        paddingTop: 0,
         paddingBottom: hp('4%'),
-        zIndex: 1,
-        backgroundColor: '#ed3126',
     },
     content: {
         flex: 1,

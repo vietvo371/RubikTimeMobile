@@ -19,6 +19,15 @@ const AppNavigator = () => {
       <Stack.Navigator 
         screenOptions={{ 
           headerShown: false,
+          headerStyle: {
+            backgroundColor: '#ed3126',
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
         }}
       >
         <Stack.Screen 

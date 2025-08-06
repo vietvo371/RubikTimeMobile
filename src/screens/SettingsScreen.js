@@ -127,10 +127,11 @@ const SettingsScreen = ({ navigation }) => {
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.inner}>
-                    <View style={styles.header}>
+                    <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
                         <TouchableOpacity 
                             style={styles.backButton}
                             onPress={() => navigation.goBack()}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                         >
                             <Icon name="arrow-left" size={24} color="#FFFFFF" />
                             <Text style={styles.backText}>Back</Text>
@@ -215,11 +216,14 @@ const styles = StyleSheet.create({
     header: {
         padding: wp('4%'),
         borderBottomWidth: 1,
-        borderBottomColor: '#FFFFFF'
+        borderBottomColor: '#FFFFFF',
+        zIndex: 1,
     },
     backButton: {
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: Platform.OS === 'ios' ? wp('2%') : wp('4%'),
     },
     backText: {
         color: '#FFFFFF',
