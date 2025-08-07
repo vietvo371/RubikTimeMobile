@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../../utils/responsive';
+import { BannerAdComponent } from '../../utils/ads';
 
 const LandscapeTimerBox = ({ bestTime = '00:00.000', onMenuPress, disabled }) => {
     const [showMenu, setShowMenu] = useState(false);
@@ -56,6 +57,7 @@ const LandscapeTimerBox = ({ bestTime = '00:00.000', onMenuPress, disabled }) =>
                 </TouchableWithoutFeedback>
             )}
             <View style={styles.box}>
+                <BannerAdComponent />
             </View>
             <View style={styles.bestTryWrapper}>
                 <View style={styles.circleBackground} />

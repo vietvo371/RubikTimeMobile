@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { wp, hp } from '../utils/responsive';
+import { BannerAdComponent } from '../utils/ads';
+
 
 const TimerBox = ({ bestTime = '00:00.000' }) => {
     const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -24,6 +26,7 @@ const TimerBox = ({ bestTime = '00:00.000' }) => {
     return (
         <View style={styles.view}>
             <View style={styles.box}>
+                <BannerAdComponent />
             </View>
             <View style={styles.bestTryWrapper}>
                 <View style={styles.circleBackground} />
@@ -101,10 +104,12 @@ const styles = StyleSheet.create({
     },
     box: {
         height: hp('15%'),
-        backgroundColor: "#0C0C0C",
+        backgroundColor: "#000000",
         borderRadius: wp('4%'),
         marginHorizontal: '3%',
+        marginVertical: hp('1%'),
         zIndex: 2,
+        overflow: 'hidden',
     },
 });
 
