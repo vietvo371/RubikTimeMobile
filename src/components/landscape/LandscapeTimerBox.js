@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     },
     bestTryWrapper: {
         position: 'absolute',
-        bottom: hp('-7%'),
+        bottom: hp('-10%'),
         width: '100%',
         alignItems: 'center',
         zIndex: 1,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
         height: hp('12%'),
         backgroundColor: '#ed3126',
         borderRadius: wp('25%'),
-        top: hp('-1%'),
+        top: hp('-2%'),
         zIndex: -1,
     },
     bestTryContainer: {

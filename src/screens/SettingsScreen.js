@@ -229,7 +229,7 @@ const SettingsScreen = ({ navigation }) => {
 
                         <View style={styles.divider} />
 
-                        <View style={styles.testDataSection}>
+                        {/* <View style={styles.testDataSection}>
                             <Text style={styles.sectionTitle}>Test Data</Text>
                             <Text style={styles.sectionDescription}>
                                 Generate 500 sample time records to test app performance with large datasets.
@@ -255,7 +255,7 @@ const SettingsScreen = ({ navigation }) => {
                                     </View>
                                 )}
                             </TouchableOpacity>
-                        </View>
+                        </View> */}
                     </View>
                 </View>
             </TouchableWithoutFeedback>

@@ -7,26 +7,27 @@ import { wp, hp } from '../../utils/responsive';
 import { GestureHandlerRootView, LongPressGestureHandler, State } from 'react-native-gesture-handler';
 import { useTimer } from '../../contexts/TimerContext';
 import { LandscapeTimerDisplayProvider, useLandscapeTimerDisplay } from './LandscapeTimerDisplayContext';
+import ScrambleDisplay from '../landscape/LandscapeScrambleDisplay';
 
 const formatTime = (ms) => {
     // Đảm bảo ms không âm và làm tròn
     ms = Math.max(0, Math.round(ms));
-    
+
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const milliseconds = Math.floor(ms % 1000);
-    
+
     // Đảm bảo các giá trị không âm
     const safeMinutes = Math.max(0, minutes);
     const safeSeconds = Math.max(0, seconds);
     const safeMilliseconds = Math.max(0, milliseconds);
-    
+
     // Đảm bảo định dạng đúng với padding
     return `${safeMinutes.toString().padStart(2, '0')}:${safeSeconds.toString().padStart(2, '0')}.${safeMilliseconds.toString().padStart(3, '0')}`;
 };
 
 const Timer = React.memo(({ onStart, onStop }) => {
-    const { 
+    const {
         isRunning,
         isReadyToStart,
         isShowingResult,
@@ -51,31 +52,31 @@ const Timer = React.memo(({ onStart, onStop }) => {
             if (!startTimeRef.current) {
                 startTimeRef.current = performance.now();
             }
-            
+
             const updateTimer = () => {
                 const currentTime = performance.now();
                 const elapsedTime = Math.max(0, currentTime - startTimeRef.current);
                 const formattedTime = formatTime(elapsedTime);
                 setDisplayTime(formattedTime);
-                
+
                 frameRef.current = requestAnimationFrame(updateTimer);
             };
-            
+
             frameRef.current = requestAnimationFrame(updateTimer);
         } else if (startTimeRef.current > 0) {
             if (frameRef.current) {
                 cancelAnimationFrame(frameRef.current);
             }
-            
+
             // Đảm bảo thời gian không âm
             const currentTime = stopTime || performance.now();
             const elapsedTime = Math.max(0, currentTime - startTimeRef.current);
             const accurateTime = formatTime(elapsedTime);
-            
+
             setDisplayTime(accurateTime);
             setTime(accurateTime);
             onStop?.(accurateTime);
-            
+
             // Reset startTimeRef sau khi dừng
             startTimeRef.current = 0;
         }
@@ -121,7 +122,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
         stopTime,
         setStopTime
     } = useLandscapeTimerDisplay();
-    
+
     const timerRef = useRef(null);
     const startTimeRef = useRef(0);
     const currentTimeRef = useRef(time);
@@ -196,7 +197,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
     const loadData = async () => {
         try {
             const times = await getTimes();
-            
+
             if (times.length === 0) {
                 setTimeList([]);
                 setAverageTime('00:00.000');
@@ -227,7 +228,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                 })
                 .sort((a, b) => convertTimeToMs(a.time) - convertTimeToMs(b.time))
                 .map(t => t.time);
-            
+
             setSub20Times(subTimes);
             setSub15Count(subTimes.length);
 
@@ -259,15 +260,15 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        
+
         startTimeRef.current = 0;
         pressStartTimeRef.current = null;
         pressTimerRef.current = null;
-        
+
         setTime('00:00.000');
         setIsRunning(false);
         setIsShowingResult(false);
-        
+
         if (global.gc) {
             global.gc();
         }
@@ -354,11 +355,11 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                                 setAverageTime('00:00.000');
                                 setSub20Times([]);
                                 setSub15Count(0);
-                                
+
                                 if (onBestTimeUpdate) {
                                     onBestTimeUpdate('00:00.000');
                                 }
-                                
+
                                 Alert.alert('Success', 'All saved times have been deleted');
                             } catch (error) {
                                 console.error('Error in clearing times:', error);
@@ -442,13 +443,13 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                                 <Text style={styles.timeDetail}>Time: {time}</Text>
                             </View>
                             <View style={styles.modalFooter}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.modalButton, styles.closeButton]}
                                     onPress={() => setModalVisible(false)}
                                 >
                                     <Text style={styles.buttonText}>Cancel</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.modalButton, styles.deleteButton]}
                                     onPress={handleDelete}
                                 >
@@ -464,7 +465,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
 
     const TimeList = React.memo(({ times, onDelete, isRunning }) => {
         return (
-            <ScrollView 
+            <ScrollView
                 style={styles.timeList}
                 showsVerticalScrollIndicator={false}
                 bounces={false}
@@ -502,9 +503,9 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                         onHandlerStateChange={(event) => onLongPress('left', event)}
                         minDurationMs={0}
                     >
-                        <View style={[styles.fingerprint, {marginLeft: wp('15%')}]}>
-                            <Image 
-                                source={require('../../assets/images/1.png')} 
+                        <View style={[styles.fingerprint, { marginLeft: wp('15%') }]}>
+                            <Image
+                                source={require('../../assets/images/1.png')}
                                 style={[styles.image, leftPressed && styles.imagePressed]}
                             />
                         </View>
@@ -519,7 +520,8 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                                 <Text style={styles.averageTimeText}>{getTotalTimes()}</Text>
                             </View>
                         </View>
-                        <TimeList 
+
+                        <TimeList
                             times={timeList}
                             onDelete={handleDeleteTime}
                             isRunning={isRunning}
@@ -527,12 +529,22 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                     </View>
                 </View>
 
+
                 <View style={styles.timerSection}>
                     <View style={styles.timerContainer}>
-                        <Timer
-                            onStart={startTimer}
-                            onStop={stopTimer}
-                        />
+                        <View style={styles.timer}>
+                            <Timer
+                                onStart={startTimer}
+                                onStop={stopTimer}
+                            />
+                        </View>
+                        <View style={styles.scrambleSection}>
+                            <ScrambleDisplay
+                                onNewScramble={() => { }}
+                                isTimerRunning={isRunning}
+                            />
+                        </View>
+
                         <View style={styles.avgInfoBox}>
                             <Text style={styles.avgLabel}>Avg {settings.numAvg} Near</Text>
                             <View style={styles.avgTimeContainer}>
@@ -550,7 +562,7 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                                 <Text style={styles.averageTimeText}>{sub15Count}</Text>
                             </View>
                         </View>
-                        <ScrollView 
+                        <ScrollView
                             style={styles.timeList}
                             showsVerticalScrollIndicator={false}
                             bounces={false}
@@ -575,9 +587,9 @@ const InnerLandscapeTimerDisplay = ({ onTimerStart, onTimerStop, onStopTimerRead
                         onHandlerStateChange={(event) => onLongPress('right', event)}
                         minDurationMs={0}
                     >
-                        <View style={[styles.fingerprint, {marginRight: wp('15%')}]}>
-                            <Image 
-                                source={require('../../assets/images/2.png')} 
+                        <View style={[styles.fingerprint, { marginRight: wp('15%') }]}>
+                            <Image
+                                source={require('../../assets/images/2.png')}
                                 style={[styles.image, rightPressed && styles.imagePressed]}
                             />
                         </View>
@@ -694,6 +706,12 @@ const styles = StyleSheet.create({
     timerContainer: {
         alignItems: 'center',
         justifyContent: 'center',
+        paddingVertical: hp('1%'),
+    },
+    scrambleSection: {
+        width: '100%',
+        alignItems: 'center',
+        marginTop: hp('-1%'),
     },
     fingerprint: {
         width: wp('15%'),
@@ -710,11 +728,11 @@ const styles = StyleSheet.create({
     },
     timeText: {
         fontSize: wp('12%'),
-        marginBottom: hp('2%'),
         fontWeight: 'bold',
         color: '#000000',
         textAlign: 'center',
         width: '100%',
+        marginBottom: hp('1%'),
     },
     readyTimeText: {
         color: '#00FF00',
@@ -794,6 +812,8 @@ const styles = StyleSheet.create({
         padding: wp('1%'),
         width: wp('50%'),
         alignItems: 'center',
+        marginTop: hp('1%'),
+        // marginBottom: hp('5%'),
     },
     avgLabel: {
         color: '#000000',
@@ -817,6 +837,10 @@ const styles = StyleSheet.create({
     },
     imagePressed: {
         opacity: 0.7,
+    },
+    timer: {
+        marginTop: hp('5%'),
+        height: hp('8%'),
     },
 });
 

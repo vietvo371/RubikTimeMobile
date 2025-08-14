@@ -20,6 +20,7 @@ import BottomNav from '../components/BottomNav';
 import { saveTime } from '../utils/database';
 import { wp, hp } from '../utils/responsive';
 import { useOrientation } from '../hooks/useOrientation';
+import ScrambleDisplay from '../components/ScrambleDisplay';
 
 const TimerScreen = ({ navigation }) => {
     const { width, height } = useWindowDimensions();
@@ -108,6 +109,11 @@ const TimerScreen = ({ navigation }) => {
                                         onStopTimerReady={handleStopTimerReady}
                                         isSettingsScreen={false}
                                     />
+                                    <ScrambleDisplay 
+                                        onNewScramble={() => {}}
+                                        isTimerRunning={!isScreenEnabled}
+                                    />
+                                    
                                     <View style={styles.column3}>
                                         <TimerControls 
                                             disabled={!isScreenEnabled} 

@@ -21,6 +21,7 @@ import { wp, hp } from '../utils/responsive';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { TimerProvider } from '../contexts/TimerContext';
 import { LandscapeTimerDisplayProvider, useLandscapeTimerDisplay } from '../components/landscape/LandscapeTimerDisplayContext';
+import ScrambleDisplay from '../components/landscape/LandscapeScrambleDisplay';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -325,6 +326,7 @@ const InnerLandscapeTimerScreen = React.forwardRef(({ navigation, ...props }, re
                                             disabled={!isScreenEnabled}
                                         />
                                     </View>
+                                    
                                     
                                     <View style={styles.content}>
                                         <LandscapeTimerDisplay
