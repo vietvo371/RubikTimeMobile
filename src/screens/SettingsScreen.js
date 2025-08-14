@@ -12,7 +12,7 @@ import {
     Keyboard,
     ActivityIndicator
 } from 'react-native';
-import { getSettings, saveSettings, generateTestData } from '../utils/database';
+import * as DatabaseUtils from '../utils/database';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../utils/responsive';
 
@@ -22,7 +22,9 @@ const SettingsScreen = ({ navigation }) => {
         numSubCount: '15',
         isSoundOn: true
     });
+    const [isLoading, setIsLoading] = useState(true);
     const [isGeneratingData, setIsGeneratingData] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadSettings();
@@ -30,15 +32,49 @@ const SettingsScreen = ({ navigation }) => {
 
     const loadSettings = async () => {
         try {
-            const savedSettings = await getSettings();
+            setIsLoading(true);
+            setError(null);
+            
+            // Thử khởi tạo database trước
+            console.log('Initializing database...');
+            try {
+                await DatabaseUtils.initDatabase();
+                console.log('Database initialized successfully');
+            } catch (dbError) {
+                console.error('Database initialization error:', dbError);
+                throw new Error(`Database initialization failed: ${dbError.message}`);
+            }
+            
+            // Lấy settings
+            console.log('Loading settings...');
+            const savedSettings = await DatabaseUtils.getSettings();
+            console.log('Loaded settings:', savedSettings);
+            
+            if (!savedSettings) {
+                throw new Error('Settings returned null or undefined');
+            }
+            
             setSettings({
-                numAvg: savedSettings.numAvg.toString(),
-                numSubCount: savedSettings.numSubCount.toString(),
-                isSoundOn: savedSettings.isSoundOn
+                numAvg: (savedSettings.numAvg || 5).toString(),
+                numSubCount: (savedSettings.numSubCount || 15).toString(),
+                isSoundOn: Boolean(savedSettings.isSoundOn)
             });
+            console.log('Settings updated successfully');
+            
         } catch (error) {
             console.error('Error loading settings:', error);
-            Alert.alert('Error', 'Could not load settings');
+            const errorMessage = error.message || 'Could not load settings. Please try again.';
+            setError(errorMessage);
+            
+            // Sử dụng giá trị mặc định an toàn
+            console.log('Using default settings due to error');
+            setSettings({
+                numAvg: '5',
+                numSubCount: '15',
+                isSoundOn: true
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -60,7 +96,7 @@ const SettingsScreen = ({ navigation }) => {
 
             // Bỏ validation cho numSubCount
 
-            await saveSettings({
+            await DatabaseUtils.saveSettings({
                 numAvg,
                 numSubCount,
                 isSoundOn: settings.isSoundOn
@@ -95,7 +131,7 @@ const SettingsScreen = ({ navigation }) => {
                     onPress: async () => {
                         try {
                             setIsGeneratingData(true);
-                            await generateTestData(500);
+                            await DatabaseUtils.generateTestData(500);
                             Alert.alert(
                                 'Success', 
                                 '500 test records have been generated successfully!',
@@ -120,6 +156,16 @@ const SettingsScreen = ({ navigation }) => {
         );
     };
 
+    // Hiển thị loading hoặc error state
+    if (isLoading) {
+        return (
+            <View style={[styles.container, styles.centerContent]}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingText}>Loading settings...</Text>
+            </View>
+        );
+    }
+
     return (
         <KeyboardAvoidingView 
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -137,6 +183,18 @@ const SettingsScreen = ({ navigation }) => {
                             <Text style={styles.backText}>Back</Text>
                         </TouchableOpacity>
                     </View>
+                    
+                    {error && (
+                        <View style={styles.errorContainer}>
+                            <Text style={styles.errorText}>{error}</Text>
+                            <TouchableOpacity 
+                                style={styles.retryButton}
+                                onPress={loadSettings}
+                            >
+                                <Text style={styles.retryButtonText}>Retry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     <View style={styles.content}>
                         <View style={styles.settingItem}>
@@ -209,6 +267,40 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#ed3126'
+    },
+    centerContent: {
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    loadingText: {
+        color: '#FFFFFF',
+        fontSize: wp('4%'),
+        marginTop: hp('2%')
+    },
+    errorContainer: {
+        backgroundColor: '#FFEBEE',
+        margin: wp('4%'),
+        padding: wp('4%'),
+        borderRadius: wp('2%'),
+        alignItems: 'center'
+    },
+    errorText: {
+        color: '#D32F2F',
+        fontSize: wp('3.5%'),
+        textAlign: 'center',
+        marginBottom: hp('1%')
+    },
+    retryButton: {
+        backgroundColor: '#D32F2F',
+        paddingVertical: hp('1%'),
+        paddingHorizontal: wp('4%'),
+        borderRadius: wp('1%'),
+        marginTop: hp('1%')
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: wp('3.5%'),
+        fontWeight: 'bold'
     },
     inner: {
         flex: 1

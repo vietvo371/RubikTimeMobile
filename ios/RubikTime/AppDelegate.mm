@@ -1,4 +1,5 @@
 #import "AppDelegate.h"
+#import "char_traits_fix.h"
 
 #import <React/RCTBundleURLProvider.h>
 #import <GoogleMobileAds/GoogleMobileAds.h>

@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: wp('8%'),
         borderTopRightRadius: wp('8%'),
         paddingHorizontal: wp('3%'),
-        paddingVertical: hp('2%'),
+        paddingVertical: hp('1%'),
     },
     landscapeContainer: {
         flexDirection: 'row',

@@ -9,12 +9,13 @@ import {
     StatusBar,
     Alert,
     Dimensions,
-    PanResponder
+    PanResponder,
+    Linking
 } from "react-native";
 import LandscapeTimerDisplay from '../components/landscape/LandscapeTimerDisplay';
 import LandscapeTimerBox from '../components/landscape/LandscapeTimerBox';
 import { saveTime, getTimes, deleteTime, deleteAllTimes } from '../utils/database';
-import Orientation from 'react-native-orientation-locker';
+import { Platform } from 'react-native';
 import SettingsScreen from './SettingsScreen';
 import { wp, hp } from '../utils/responsive';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
@@ -23,7 +24,9 @@ import { LandscapeTimerDisplayProvider, useLandscapeTimerDisplay } from '../comp
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
+const InnerLandscapeTimerScreen = React.forwardRef(({ navigation, ...props }, ref) => {
+    // Log navigation prop để debug
+    console.log('Navigation prop in InnerLandscapeTimerScreen:', navigation);
     const [isScreenEnabled, setIsScreenEnabled] = useState(true);
     const [stopTimerFunc, setStopTimerFunc] = useState(null);
     const [updateTrigger, setUpdateTrigger] = useState(0);
@@ -121,15 +124,40 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     }, []);
 
     useEffect(() => {
-        const subscription = Dimensions.addEventListener('change', ({ window }) => {
-            const { width, height } = window;
-            console.log('Dimensions changed:', width, height);
-        });
+        if (Platform.OS === 'ios') {
+            const checkOrientation = () => {
+                const { width, height } = Dimensions.get('window');
+                if (width < height && navigation?.isFocused()) {
+                    Alert.alert(
+                        'Landscape Mode Required',
+                        'Please rotate your device to landscape mode to use this feature.',
+                        [
+                            {
+                                text: 'Switch to Portrait Mode',
+                                // onPress: () => {
+                                //     navigation?.replace('Timer');
+                                // },
+                                style: 'cancel'
+                            }
+                        ],
+                        { cancelable: false }
+                    );
+                }
+            };
 
-        return () => {
-            subscription.remove();
-        };
-    }, []);
+            // Kiểm tra orientation ban đầu
+            checkOrientation();
+
+            // Sử dụng event subscription
+            const subscription = Dimensions.addEventListener('change', () => {
+                checkOrientation();
+            });
+
+            return () => {
+                subscription.remove();
+            };
+        }
+    }, [navigation]);
 
     useEffect(() => {
         console.log('isTimerStarted changed:', isTimerStarted);
@@ -167,15 +195,15 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     };
 
     const handleSettingsPress = () => {
-        Orientation.lockToPortrait();
-        props.navigation.navigate('Settings');
+        if (navigation) {
+            navigation.navigate('Settings');
+        } else {
+            console.error('Navigation prop is undefined');
+        }
     };
 
     const handleOneHand = () => {
-        Orientation.lockToPortrait();
-        setTimeout(() => {
-            props.navigation.replace('Timer');
-        }, 100);
+        navigation?.replace('Timer');
     };
 
     const handleTwoHand = () => {
@@ -327,7 +355,9 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     );
 });
 
-const LandscapeTimerScreen = (props) => {
+const LandscapeTimerScreen = ({ navigation }) => {
+    // Log navigation prop để debug
+    console.log('Navigation prop in LandscapeTimerScreen:', navigation);
     const timerContextValue = {
         onTimerStart: () => {
             if (innerScreenRef.current) {
@@ -356,7 +386,10 @@ const LandscapeTimerScreen = (props) => {
     return (
         <TimerProvider value={timerContextValue}>
             <LandscapeTimerDisplayProvider>
-                <InnerLandscapeTimerScreen ref={innerScreenRef} {...props} />
+                <InnerLandscapeTimerScreen 
+                    ref={innerScreenRef} 
+                    navigation={navigation} 
+                />
             </LandscapeTimerDisplayProvider>
         </TimerProvider>
     );
