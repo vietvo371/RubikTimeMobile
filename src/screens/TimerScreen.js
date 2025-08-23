@@ -21,6 +21,7 @@ import { saveTime } from '../utils/database';
 import { wp, hp } from '../utils/responsive';
 import { useOrientation } from '../hooks/useOrientation';
 import ScrambleDisplay from '../components/ScrambleDisplay';
+import { loadRewardedInterstitial, showRewardedInterstitial } from '../utils/ads';
 
 const TimerScreen = ({ navigation }) => {
     const { width, height } = useWindowDimensions();
@@ -66,6 +67,17 @@ const TimerScreen = ({ navigation }) => {
                 const savedTime = await saveTime(finalTime);
                 console.log('Time saved successfully:', savedTime);
                 setUpdateTrigger(prev => prev + 1);
+                
+                // Hiển thị quảng cáo xen kẽ có tặng thưởng sau khi lưu thời gian
+                try {
+                    await loadRewardedInterstitial();
+                    // Chờ một chút để quảng cáo load
+                    setTimeout(() => {
+                        showRewardedInterstitial();
+                    }, 1000);
+                } catch (adError) {
+                    console.log('Ad not ready yet:', adError);
+                }
             } catch (error) {
                 console.error('Error saving time:', error.message);
                 Alert.alert(

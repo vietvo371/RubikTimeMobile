@@ -1,90 +1,51 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
-// Mock implementations for Google Mobile Ads
-const mobileAds = () => ({
-  initialize: () => Promise.resolve({}),
-});
+// Mock implementation cho Google Mobile Ads để tránh vấn đề Kotlin version
+// Khi app được approve và publish, thay thế bằng implementation thực tế
 
-const TestIds = {
-  BANNER: 'ca-app-pub-3940256099942544/6300978111',
-  INTERSTITIAL: 'ca-app-pub-3940256099942544/1033173712',
-};
-
-const BannerAdSize = {
-  BANNER: 'BANNER',
-};
-
-const AdEventType = {
-  LOADED: 'loaded',
-  ERROR: 'error',
-};
-
-// Mock BannerAd component
-const BannerAd = ({ style }) => (
-  <View style={[style, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
-    <Text style={{ color: '#666' }}>Ad Space</Text>
-  </View>
-);
-
-// Mock InterstitialAd
-const InterstitialAd = {
-  createForAdRequest: () => ({
-    addAdEventListener: () => {},
-    load: () => {},
-    show: () => {},
-  }),
-};
-
-// Khởi tạo Mobile Ads SDK
-mobileAds()
-  .initialize()
-  .then(adapterStatuses => {
-    // Khởi tạo thành công
-    console.log('Initialization complete:', adapterStatuses);
-  });
-
-// Test ad unit IDs - Thay thế bằng ID thật khi publish
+// Ad unit IDs thực tế từ AdMob
 export const adUnitIds = {
-  banner: __DEV__ ? TestIds.BANNER : 'ca-app-pub-4926910693822363/1239809256',
-  interstitial: __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-4926910693822363/5471516543',
+  banner: 'ca-app-pub-4926910693822363/2119847901',
+  interstitial: 'ca-app-pub-4926910693822363/2119847901',
+  rewardedInterstitial: 'ca-app-pub-4926910693822363/2119847901',
 };
 
-// Quảng cáo xen kẽ
-let interstitial = null;
+// Mock quảng cáo xen kẽ có tặng thưởng
+export const loadRewardedInterstitial = () => {
+  console.log('Mock: Loading rewarded interstitial ad...');
+  return Promise.resolve();
+};
 
+export const showRewardedInterstitial = () => {
+  console.log('Mock: Showing rewarded interstitial ad...');
+  // Trong tương lai, thay thế bằng implementation thực tế
+  return Promise.resolve();
+};
+
+// Mock quảng cáo xen kẽ thường
 export const loadInterstitial = () => {
-  interstitial = InterstitialAd.createForAdRequest(adUnitIds.interstitial);
-
-  interstitial.addAdEventListener(AdEventType.LOADED, () => {
-    console.log('Interstitial ad loaded');
-  });
-
-  interstitial.addAdEventListener(AdEventType.ERROR, error => {
-    console.error('Interstitial ad error:', error);
-  });
-
-  interstitial.load();
+  console.log('Mock: Loading interstitial ad...');
+  return Promise.resolve();
 };
 
 export const showInterstitial = () => {
-  if (interstitial) {
-    interstitial.show();
-  }
+  console.log('Mock: Showing interstitial ad...');
+  // Trong tương lai, thay thế bằng implementation thực tế
+  return Promise.resolve();
 };
 
-// Component Banner Ad
+// Component Banner Ad Mock
 export const BannerAdComponent = () => {
   return (
     <View style={styles.adContainer}>
-      <BannerAd
-        unitId={adUnitIds.banner}
-        size={BannerAdSize.BANNER}
-        requestOptions={{
-          requestNonPersonalizedAdsOnly: true,
-        }}
-        style={styles.banner}
-      />
+      <TouchableOpacity 
+        style={styles.mockBanner}
+        onPress={() => console.log('Mock banner ad clicked')}
+      >
+        <Text style={styles.mockBannerText}>Ad Space</Text>
+        <Text style={styles.mockBannerSubtext}>Tap to interact</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -95,10 +56,29 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: 'transparent',
   },
-  banner: {
+  mockBanner: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  mockBannerText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'center',
+  },
+  mockBannerSubtext: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
   }
 });
