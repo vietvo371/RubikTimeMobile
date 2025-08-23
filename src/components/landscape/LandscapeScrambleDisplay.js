@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { wp, hp } from '../../utils/responsive';
 
 // Các ký hiệu Rubik cơ bản
@@ -30,13 +30,34 @@ const generateScramble = (length = 20) => {
   return scramble.join(' ');
 };
 
-const ScrambleDisplay = ({ onNewScramble, isTimerRunning }) => {
+const ScrambleDisplay = ({ onNewScramble, isTimerRunning, onTimerStop }) => {
   const [scramble, setScramble] = useState('');
   const [scrambleNumber, setScrambleNumber] = useState(1);
+  const [prevTimerRunning, setPrevTimerRunning] = useState(isTimerRunning);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     generateNewScramble();
+    setPrevTimerRunning(isTimerRunning);
+    setIsInitialized(true);
   }, []);
+
+  useEffect(() => {
+    if (isInitialized && prevTimerRunning !== undefined) {
+      if (isTimerRunning && !prevTimerRunning) {
+        // Timer vừa bắt đầu
+      }
+      else if (!isTimerRunning && prevTimerRunning) {
+        // Timer vừa kết thúc, tạo scramble mới
+        generateNewScramble();
+        if (onTimerStop) {
+          onTimerStop();
+        }
+      }
+    }
+    
+    setPrevTimerRunning(isTimerRunning);
+  }, [isTimerRunning, prevTimerRunning, onTimerStop, isInitialized]);
 
   const generateNewScramble = () => {
     const newScramble = generateScramble(20);
@@ -47,23 +68,10 @@ const ScrambleDisplay = ({ onNewScramble, isTimerRunning }) => {
     }
   };
 
-  const handleRefresh = () => {
-    if (!isTimerRunning) {
-      generateNewScramble();
-    }
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.scrambleContainer}>
         <Text style={styles.scrambleText}>{scramble}</Text>
-        <TouchableOpacity 
-          style={[styles.refreshButton, isTimerRunning && styles.disabledButton]} 
-          onPress={handleRefresh}
-          disabled={isTimerRunning}
-        >
-          <Text style={styles.refreshText}>🔄</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -86,31 +94,6 @@ const styles = StyleSheet.create({
     width: wp('50%'),
     alignSelf: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: hp('1%'),
-  },
-  scrambleLabel: {
-    fontSize: wp('3.5%'),
-    fontWeight: '600',
-    color: '#495057',
-  },
-  refreshButton: {
-    padding: wp('1.5%'),
-    borderRadius: wp('1.5%'),
-    backgroundColor: '#e9ecef',
-    minWidth: wp('8%'),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  refreshText: {
-    fontSize: wp('4%'),
-  },
   scrambleContainer: {
     backgroundColor: '#ffffff',
     borderRadius: wp('2%'),
@@ -120,7 +103,7 @@ const styles = StyleSheet.create({
     borderColor: '#dee2e6',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   scrambleText: {
     fontSize: wp('2.5%'),
@@ -130,7 +113,6 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontWeight: '500',
     flex: 1,
-    marginRight: wp('1.5%'),
   },
 });
 

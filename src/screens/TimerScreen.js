@@ -112,6 +112,9 @@ const TimerScreen = ({ navigation }) => {
                                     <ScrambleDisplay 
                                         onNewScramble={() => {}}
                                         isTimerRunning={!isScreenEnabled}
+                                        onTimerStop={() => {
+                                            console.log('New scramble generated after timer stopped');
+                                        }}
                                     />
                                     
                                     <View style={styles.column3}>
