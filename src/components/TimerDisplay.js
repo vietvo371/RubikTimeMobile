@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '5%',
-        height: '25%',
+        height: '15%',
     },
     pressable: {
         opacity: 1,

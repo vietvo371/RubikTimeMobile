@@ -20,6 +20,7 @@ import BottomNav from '../components/BottomNav';
 import { saveTime } from '../utils/database';
 import { wp, hp } from '../utils/responsive';
 import { useOrientation } from '../hooks/useOrientation';
+import ScrambleDisplay from '../components/ScrambleDisplay';
 
 const TimerScreen = ({ navigation }) => {
     const { width, height } = useWindowDimensions();
@@ -84,7 +85,7 @@ const TimerScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === "ios" ? 0 : 20 }]}>
             <KeyboardAvoidingView 
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.container}
@@ -108,6 +109,14 @@ const TimerScreen = ({ navigation }) => {
                                         onStopTimerReady={handleStopTimerReady}
                                         isSettingsScreen={false}
                                     />
+                                    <ScrambleDisplay 
+                                        onNewScramble={() => {}}
+                                        isTimerRunning={!isScreenEnabled}
+                                        onTimerStop={() => {
+                                            console.log('New scramble generated after timer stopped');
+                                        }}
+                                    />
+                                    
                                     <View style={styles.column3}>
                                         <TimerControls 
                                             disabled={!isScreenEnabled} 
@@ -155,7 +164,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: wp('8%'),
         borderTopRightRadius: wp('8%'),
         paddingHorizontal: wp('3%'),
-        paddingVertical: hp('2%'),
+        paddingVertical: hp('1%'),
     },
     landscapeContainer: {
         flexDirection: 'row',

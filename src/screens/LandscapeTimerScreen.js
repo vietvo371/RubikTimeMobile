@@ -9,21 +9,25 @@ import {
     StatusBar,
     Alert,
     Dimensions,
-    PanResponder
+    PanResponder,
+    Linking
 } from "react-native";
 import LandscapeTimerDisplay from '../components/landscape/LandscapeTimerDisplay';
 import LandscapeTimerBox from '../components/landscape/LandscapeTimerBox';
 import { saveTime, getTimes, deleteTime, deleteAllTimes } from '../utils/database';
-import Orientation from 'react-native-orientation-locker';
+import { Platform } from 'react-native';
 import SettingsScreen from './SettingsScreen';
 import { wp, hp } from '../utils/responsive';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { TimerProvider } from '../contexts/TimerContext';
 import { LandscapeTimerDisplayProvider, useLandscapeTimerDisplay } from '../components/landscape/LandscapeTimerDisplayContext';
+import ScrambleDisplay from '../components/landscape/LandscapeScrambleDisplay';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
+const InnerLandscapeTimerScreen = React.forwardRef(({ navigation, ...props }, ref) => {
+    // Log navigation prop để debug
+    console.log('Navigation prop in InnerLandscapeTimerScreen:', navigation);
     const [isScreenEnabled, setIsScreenEnabled] = useState(true);
     const [stopTimerFunc, setStopTimerFunc] = useState(null);
     const [updateTrigger, setUpdateTrigger] = useState(0);
@@ -53,24 +57,46 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
                 }
             });
 
-            setLeftTouched(isLeftTouched);
-            setRightTouched(isRightTouched);
+            // Cập nhật trạng thái touch
+            if (isLeftTouched) setLeftTouched(true);
+            if (isRightTouched) setRightTouched(true);
 
-            if (isLeftTouched && isRightTouched && !isScreenEnabled && stopTimerFunc && !isStoppingTimer) {
+            // Kiểm tra nếu cả 2 vùng đã được chạm (không cần cùng lúc)
+            if (leftTouched && rightTouched && !isScreenEnabled && stopTimerFunc && !isStoppingTimer) {
                 setIsStoppingTimer(true);
                 setIsStopDisabled(true);
                 const touchTime = performance.now();
                 stopTimerFunc(touchTime);
                 setIsScreenEnabled(true);
 
+                // Reset trạng thái touch sau khi timer dừng
+                setLeftTouched(false);
+                setRightTouched(false);
+
                 setTimeout(() => {
                     setIsStopDisabled(false);
                 }, 1000);
             }
         })
-        .onTouchesUp(() => {
-            setLeftTouched(false);
-            setRightTouched(false);
+        .onTouchesUp((event) => {
+            // Chỉ reset vùng touch khi không còn touch nào trên vùng đó
+            const touches = event.allTouches;
+            let hasLeftTouch = false;
+            let hasRightTouch = false;
+            
+            touches.forEach(touch => {
+                const screenWidth = Dimensions.get('window').width;
+                if (touch.x < screenWidth / 2) {
+                    hasLeftTouch = true;
+                } else {
+                    hasRightTouch = true;
+                }
+            });
+
+            // Chỉ reset vùng không còn được chạm
+            if (!hasLeftTouch) setLeftTouched(false);
+            if (!hasRightTouch) setRightTouched(false);
+            
             setIsStoppingTimer(false);
         })
         .enabled(!isScreenEnabled);
@@ -121,15 +147,40 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     }, []);
 
     useEffect(() => {
-        const subscription = Dimensions.addEventListener('change', ({ window }) => {
-            const { width, height } = window;
-            console.log('Dimensions changed:', width, height);
-        });
+        if (Platform.OS === 'ios') {
+            const checkOrientation = () => {
+                const { width, height } = Dimensions.get('window');
+                if (width < height && navigation?.isFocused()) {
+                    Alert.alert(
+                        'Landscape Mode Required',
+                        'Please rotate your device to landscape mode to use this feature.',
+                        [
+                            {
+                                text: 'Switch to Portrait Mode',
+                                // onPress: () => {
+                                //     navigation?.replace('Timer');
+                                // },
+                                style: 'cancel'
+                            }
+                        ],
+                        { cancelable: false }
+                    );
+                }
+            };
 
-        return () => {
-            subscription.remove();
-        };
-    }, []);
+            // Kiểm tra orientation ban đầu
+            checkOrientation();
+
+            // Sử dụng event subscription
+            const subscription = Dimensions.addEventListener('change', () => {
+                checkOrientation();
+            });
+
+            return () => {
+                subscription.remove();
+            };
+        }
+    }, [navigation]);
 
     useEffect(() => {
         console.log('isTimerStarted changed:', isTimerStarted);
@@ -167,15 +218,15 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     };
 
     const handleSettingsPress = () => {
-        Orientation.lockToPortrait();
-        props.navigation.navigate('Settings');
+        if (navigation) {
+            navigation.navigate('Settings');
+        } else {
+            console.error('Navigation prop is undefined');
+        }
     };
 
     const handleOneHand = () => {
-        Orientation.lockToPortrait();
-        setTimeout(() => {
-            props.navigation.replace('Timer');
-        }, 100);
+        navigation?.replace('Timer');
     };
 
     const handleTwoHand = () => {
@@ -298,6 +349,7 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
                                         />
                                     </View>
                                     
+                                    
                                     <View style={styles.content}>
                                         <LandscapeTimerDisplay
                                             onTimerStart={handleTimerStart}
@@ -327,7 +379,9 @@ const InnerLandscapeTimerScreen = React.forwardRef((props, ref) => {
     );
 });
 
-const LandscapeTimerScreen = (props) => {
+const LandscapeTimerScreen = ({ navigation }) => {
+    // Log navigation prop để debug
+    console.log('Navigation prop in LandscapeTimerScreen:', navigation);
     const timerContextValue = {
         onTimerStart: () => {
             if (innerScreenRef.current) {
@@ -356,7 +410,10 @@ const LandscapeTimerScreen = (props) => {
     return (
         <TimerProvider value={timerContextValue}>
             <LandscapeTimerDisplayProvider>
-                <InnerLandscapeTimerScreen ref={innerScreenRef} {...props} />
+                <InnerLandscapeTimerScreen 
+                    ref={innerScreenRef} 
+                    navigation={navigation} 
+                />
             </LandscapeTimerDisplayProvider>
         </TimerProvider>
     );
@@ -366,6 +423,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        paddingTop: hp('4%'), // Thêm padding phía trên để tránh đè navbar
     },
     fullScreenTouchable: {
         flex: 1,
@@ -376,12 +434,14 @@ const styles = StyleSheet.create({
     column: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        paddingTop: hp('2%'), // Thêm padding cho column
     },
     topBar: {
-        height: hp('16%'),
+        height: hp('12%'), // Giảm chiều cao của topBar
         position: 'relative',
-        paddingTop: 0,
-        paddingBottom: hp('4%'),
+        paddingTop: hp('1%'),
+        paddingBottom: hp('2%'),
+        zIndex: 10, // Đảm bảo topBar hiển thị trên cùng
     },
     content: {
         flex: 1,
