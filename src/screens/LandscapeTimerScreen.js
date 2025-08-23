@@ -57,24 +57,46 @@ const InnerLandscapeTimerScreen = React.forwardRef(({ navigation, ...props }, re
                 }
             });
 
-            setLeftTouched(isLeftTouched);
-            setRightTouched(isRightTouched);
+            // Cập nhật trạng thái touch
+            if (isLeftTouched) setLeftTouched(true);
+            if (isRightTouched) setRightTouched(true);
 
-            if (isLeftTouched && isRightTouched && !isScreenEnabled && stopTimerFunc && !isStoppingTimer) {
+            // Kiểm tra nếu cả 2 vùng đã được chạm (không cần cùng lúc)
+            if (leftTouched && rightTouched && !isScreenEnabled && stopTimerFunc && !isStoppingTimer) {
                 setIsStoppingTimer(true);
                 setIsStopDisabled(true);
                 const touchTime = performance.now();
                 stopTimerFunc(touchTime);
                 setIsScreenEnabled(true);
 
+                // Reset trạng thái touch sau khi timer dừng
+                setLeftTouched(false);
+                setRightTouched(false);
+
                 setTimeout(() => {
                     setIsStopDisabled(false);
                 }, 1000);
             }
         })
-        .onTouchesUp(() => {
-            setLeftTouched(false);
-            setRightTouched(false);
+        .onTouchesUp((event) => {
+            // Chỉ reset vùng touch khi không còn touch nào trên vùng đó
+            const touches = event.allTouches;
+            let hasLeftTouch = false;
+            let hasRightTouch = false;
+            
+            touches.forEach(touch => {
+                const screenWidth = Dimensions.get('window').width;
+                if (touch.x < screenWidth / 2) {
+                    hasLeftTouch = true;
+                } else {
+                    hasRightTouch = true;
+                }
+            });
+
+            // Chỉ reset vùng không còn được chạm
+            if (!hasLeftTouch) setLeftTouched(false);
+            if (!hasRightTouch) setRightTouched(false);
+            
             setIsStoppingTimer(false);
         })
         .enabled(!isScreenEnabled);
