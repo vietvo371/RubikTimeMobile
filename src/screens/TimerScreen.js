@@ -21,6 +21,9 @@ import { saveTime } from '../utils/database';
 import { wp, hp } from '../utils/responsive';
 import { useOrientation } from '../hooks/useOrientation';
 import ScrambleDisplay from '../components/ScrambleDisplay';
+import { useAds } from '../utils/ads';
+import RewardedAdIntro from '../components/RewardedAdIntro';
+import { getAdConfig } from '../utils/adConfig';
 
 const TimerScreen = ({ navigation }) => {
     const { width, height } = useWindowDimensions();
@@ -28,7 +31,12 @@ const TimerScreen = ({ navigation }) => {
     const [stopTimerFunc, setStopTimerFunc] = useState(null);
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const [bestTime, setBestTime] = useState('00:00,00');
+    const [solveCount, setSolveCount] = useState(0);
+    const [showAdIntro, setShowAdIntro] = useState(false);
+    const [pendingReward, setPendingReward] = useState(null);
     const orientation = useOrientation();
+    const { showRewardedAd, showInterstitialAd } = useAds();
+    const adConfig = getAdConfig();
 
     useEffect(() => {
         const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -59,6 +67,23 @@ const TimerScreen = ({ navigation }) => {
         setIsScreenEnabled(false);
     };
 
+    const handleShowRewardedAd = () => {
+        setShowAdIntro(false);
+        showRewardedAd((reward) => {
+            console.log('User earned reward:', reward);
+            Alert.alert(
+                'Chúc mừng! 🎉',
+                `Bạn đã nhận được ${reward.amount} ${reward.type}!`,
+                [{ text: 'OK' }]
+            );
+        });
+    };
+
+    const handleSkipRewardedAd = () => {
+        setShowAdIntro(false);
+        setPendingReward(null);
+    };
+
     const handleTimerStop = async (finalTime) => {
         setIsScreenEnabled(true);
         if (finalTime) {
@@ -66,6 +91,23 @@ const TimerScreen = ({ navigation }) => {
                 const savedTime = await saveTime(finalTime);
                 console.log('Time saved successfully:', savedTime);
                 setUpdateTrigger(prev => prev + 1);
+                
+                // Tăng số lần giải
+                const newSolveCount = solveCount + 1;
+                setSolveCount(newSolveCount);
+                
+                // Kiểm tra xem có nên hiển thị quảng cáo không
+                const adType = getAdTypeToShow(newSolveCount);
+                
+                if (adType === 'rewardedInterstitial') {
+                    // Hiển thị intro screen trước khi hiển thị quảng cáo
+                    setPendingReward(adConfig.rewards.defaultReward);
+                    setShowAdIntro(true);
+                } else if (adType === 'interstitial') {
+                    // Hiển thị quảng cáo xen kẽ thường
+                    showInterstitialAd();
+                }
+                
             } catch (error) {
                 console.error('Error saving time:', error.message);
                 Alert.alert(
@@ -82,6 +124,19 @@ const TimerScreen = ({ navigation }) => {
 
     const handleBestTimeUpdate = (time) => {
         setBestTime(time);
+    };
+
+    // Hàm helper để lấy loại quảng cáo
+    const getAdTypeToShow = (solveCount) => {
+        const { rewardedInterstitialFrequency, interstitialFrequency } = adConfig.displaySettings;
+        
+        if (solveCount % rewardedInterstitialFrequency === 0) {
+            return 'rewardedInterstitial';
+        } else if (solveCount % interstitialFrequency === 0) {
+            return 'interstitial';
+        }
+        
+        return null;
     };
 
     return (
@@ -144,6 +199,14 @@ const TimerScreen = ({ navigation }) => {
                     </View>
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
+
+            {/* Intro screen cho quảng cáo xen kẽ có tặng thưởng */}
+            <RewardedAdIntro
+                visible={showAdIntro}
+                onConfirm={handleShowRewardedAd}
+                onSkip={handleSkipRewardedAd}
+                rewardInfo={pendingReward}
+            />
         </SafeAreaView>
     );
 };
